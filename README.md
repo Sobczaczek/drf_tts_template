@@ -14,7 +14,7 @@ This is Web API template for any LoRaWAN application than uses TheThingsNetwork 
 
 ## TODO
 
-- [] create venv and install vital components
+- [x] create venv and install vital components
 - [] create pip requirements file (requirements.txt)
-- [] set up new basic project
+- [x] set up new basic project
 - []
