@@ -2,11 +2,13 @@ from django.shortcuts import render
 
 from rest_framework import viewsets
 from rest_framework import permissions
+from .permissions import IsAdminOrTeamLeader, IsTeamMember
 
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User
 
-from .models import Device
-from .serializers import DeviceSerializer, UserSerializer
+from .models import Device, Team, CustomUser
+from rest_framework.exceptions import PermissionDenied
+from .serializers import DeviceSerializer, UserSerializer, TeamSerializer, CustomUserSerializer
 
 # Create your views here.
 
@@ -54,10 +56,51 @@ class LocalDeviceSet(viewsets.ModelViewSet):
 
 
 # USER VIEW CLASS ==================================================================================================== # 
-class UserViewSet(viewsets.ModelViewSet):
-    '''
-    API endpoint for `Users` to be viewed and edited.
-    '''
-    queryset=User.objects.all().order_by('-date_joined')
-    serializer_class=UserSerializer
-    permission_classes=[permissions.IsAdminUser]
+# class UserViewSet(viewsets.ModelViewSet):
+#     '''
+#     API endpoint for `Users` to be viewed and edited.
+#     '''
+#     queryset=User.objects.all().order_by('-date_joined')
+#     serializer_class=UserSerializer
+#     permission_classes=[permissions.IsAdminUser]
+
+
+# class TeamViewSet(viewsets.ModelViewSet):
+#     queryset=Team.objects.all()
+#     serializer_class=TeamSerializer
+#     permission_classes=[permissions.IsAdminUser]
+
+class CustomUserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = CustomUserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrTeamLeader]
+
+    def perform_create(self, serializer):
+        # Only allow team leaders to add users to their own team
+        team_id = serializer.validated_data.get('team_id')
+        if not self.request.user.is_staff and not self.request.user.is_team_leader:
+            raise PermissionDenied("Only team leaders or admins can add users.")
+        
+        team = Team.objects.get(team_id=team_id)
+        if not self.request.user.is_staff and self.request.user.team != team:
+            raise PermissionDenied("You can only add users to your own team.")
+
+        serializer.save(team=team)
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+class TeamViewSet(viewsets.ModelViewSet):
+    queryset = Team.objects.all()
+    serializer_class = TeamSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrTeamLeader, IsTeamMember]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [permissions.IsAuthenticated, IsTeamMember]
+        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [permissions.IsAuthenticated, IsAdminOrTeamLeader]
+        else:
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]

@@ -1,5 +1,4 @@
 env
 db
-app/migrations
 app/__pycache__
 project/__pycache__

@@ -24,8 +24,8 @@ from app import views
 # Major router
 router = DefaultRouter()
 
-router.register(r'users', views.UserViewSet)
-# router.register(r'groups', views.GroupViewSet)
+router.register(r'users', views.CustomUserViewSet)
+router.register(r'teams', views.TeamViewSet)
 
 router.register(r'devices', views.LocalDeviceSet)
 
